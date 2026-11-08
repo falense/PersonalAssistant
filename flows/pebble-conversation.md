@@ -36,7 +36,15 @@ trigger (API / claude_task, evt_…)
      then an **open-ended** follow-up question, such as "Want me to … or something
      else?" or "What should I do next with this?". Avoid yes/no questions unless you
      need confirmation before an action.
-   - `timeoutSeconds`: `230` (the maximum).
+   - `timeoutSeconds`: `55`. The MCP client drops any call after 60 seconds, even though
+     Paperboy allows up to 230. A longer timeout makes the call fail on the client side
+     while the question stays open on the watch.
+
+   **Late answers.** If the call fails with an MCP timeout, or a later `ask_user` returns
+   `busy`, the earlier question is probably still on the watch. Long-poll
+   `read_events(type="voice.input", since=<last cursor>, wait=30)` for up to about
+   4 minutes in total. Treat a `voice.input` from `pebble` as the answer. Keep the cursor
+   from your first `read_events` call so you don't pick up old answers.
 
    Then handle the result:
    - **Answer text**: treat it as the user's next instruction. Do that work, then go
@@ -46,7 +54,10 @@ trigger (API / claude_task, evt_…)
    - **`timeout`**: the user has left. End the conversation and go to step 4.
    - **`device_unreachable`, `voice_off`, `voice_unavailable`, `cancelled_by_user`**:
      end and go to step 4.
-   - **`busy`**: wait briefly and retry once. If it is still busy, go to step 4.
+   - **`busy`**: an earlier question is still open. Wait for its answer with
+     `read_events`, as described under "Late answers".
+   - **`no_speech`**: the user pressed the button but said nothing that could be heard.
+     Ask again once with a shorter question. If that also returns `no_speech`, end.
    - **The user ends it** ("that's all", "nei takk", "stopp"): go to step 4.
 
    Guard rails: stop after **10 turns**. If a follow-up would lead to a purchase, a
