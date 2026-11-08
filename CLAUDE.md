@@ -47,6 +47,7 @@ without sending a notification.
 
 ## Rules
 
+- Git: never use branches. Commit and push directly to `main`.
 - Never take outward-facing or irreversible actions (purchases, checkouts, deletions,
   messages to other people) on the strength of a spoken answer alone. Read the action
   back on the watch and get an explicit "yes" first.
